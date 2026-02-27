@@ -8,30 +8,27 @@ import (
 	"github.com/vlmoon99/near-sdk-go/types"
 )
 
-// Bid stores the current highest bidder and their bid amount (in yoctoNEAR).
 type Bid struct {
 	Bidder string `json:"bidder"`
-	Amount string `json:"amount"` // yoctoNEAR as decimal string
+	Amount string `json:"amount"`
 }
 
-// AuctionInfo is a flat view of the contract state, returned by GetAuctionInfo.
 type AuctionInfo struct {
 	HighestBid     Bid    `json:"highest_bid"`
-	AuctionEndTime uint64 `json:"auction_end_time"` // milliseconds
+	AuctionEndTime uint64 `json:"auction_end_time"`
 	Auctioneer     string `json:"auctioneer"`
 	Claimed        bool   `json:"claimed"`
 }
 
-// InitInput is the parameter for the Init constructor.
 type InitInput struct {
-	EndTime    uint64 `json:"end_time"`   // auction end time in milliseconds
-	Auctioneer string `json:"auctioneer"` // account that receives winning bid
+	EndTime    uint64 `json:"end_time"`
+	Auctioneer string `json:"auctioneer"`
 }
 
 // @contract:state
 type AuctionContract struct {
 	HighestBid     Bid    `json:"highest_bid"`
-	AuctionEndTime uint64 `json:"auction_end_time"` // milliseconds
+	AuctionEndTime uint64 `json:"auction_end_time"`
 	Auctioneer     string `json:"auctioneer"`
 	Claimed        bool   `json:"claimed"`
 }
@@ -41,7 +38,7 @@ func (c *AuctionContract) Init(input InitInput) {
 	currentAccount, _ := env.GetCurrentAccountId()
 	c.HighestBid = Bid{
 		Bidder: currentAccount,
-		Amount: "1", // initial bid: 1 yoctoNEAR
+		Amount: "1",
 	}
 	c.AuctionEndTime = input.EndTime
 	c.Auctioneer = input.Auctioneer
@@ -49,9 +46,6 @@ func (c *AuctionContract) Init(input InitInput) {
 	env.LogString("Auction initialized")
 }
 
-// Bid places a new bid. The caller must attach more NEAR than the current
-// highest bid. The previous highest bidder is automatically refunded.
-//
 // @contract:mutating
 func (c *AuctionContract) Bid() error {
 	blockTime := env.GetBlockTimeMs()
@@ -86,15 +80,11 @@ func (c *AuctionContract) Bid() error {
 		Amount: deposit.String(),
 	}
 
-	// Refund the previous highest bidder
 	promise.CreateBatch(lastBidder).Transfer(lastBid)
 
 	return nil
 }
 
-// Claim transfers the highest bid to the auctioneer. Can only be called after
-// the auction has ended and only once.
-//
 // @contract:mutating
 func (c *AuctionContract) Claim() error {
 	blockTime := env.GetBlockTimeMs()
@@ -113,42 +103,31 @@ func (c *AuctionContract) Claim() error {
 		return errors.New("invalid winning bid amount in state")
 	}
 
-	// Transfer winning bid to auctioneer
 	promise.CreateBatch(c.Auctioneer).Transfer(winningBid)
 
 	return nil
 }
 
-// GetHighestBid returns the current highest bid (bidder + amount).
-//
 // @contract:view
 func (c *AuctionContract) GetHighestBid() Bid {
 	return c.HighestBid
 }
 
-// GetAuctionEndTime returns the auction end time in milliseconds.
-//
 // @contract:view
 func (c *AuctionContract) GetAuctionEndTime() uint64 {
 	return c.AuctionEndTime
 }
 
-// GetAuctioneer returns the account that receives the winning bid.
-//
 // @contract:view
 func (c *AuctionContract) GetAuctioneer() string {
 	return c.Auctioneer
 }
 
-// GetClaimed returns whether the auction has been claimed.
-//
 // @contract:view
 func (c *AuctionContract) GetClaimed() bool {
 	return c.Claimed
 }
 
-// GetAuctionInfo returns the full auction state in one call.
-//
 // @contract:view
 func (c *AuctionContract) GetAuctionInfo() AuctionInfo {
 	return AuctionInfo{

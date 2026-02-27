@@ -9,9 +9,9 @@ import (
 )
 
 const (
-	auctionEndTimeMs = uint64(1000) // auction ends at t=1000ms
-	beforeEndNs      = uint64(500) * 1_000_000  // t=500ms  → before end
-	afterEndNs       = uint64(2000) * 1_000_000 // t=2000ms → after end
+	auctionEndTimeMs = uint64(1000)
+	beforeEndNs      = uint64(500) * 1_000_000
+	afterEndNs       = uint64(2000) * 1_000_000
 )
 
 func init() {
@@ -57,8 +57,6 @@ func setBlockTime(t *testing.T, ns uint64) {
 	mockSys(t).BlockTimestampSys = ns
 }
 
-// ─── Init ────────────────────────────────────────────────────────────────────
-
 func TestAuction_Init(t *testing.T) {
 	c := setupTest(t)
 
@@ -80,8 +78,6 @@ func TestAuction_Init(t *testing.T) {
 		t.Error("claimed should be false after init")
 	}
 }
-
-// ─── Bid ─────────────────────────────────────────────────────────────────────
 
 func TestAuction_Bid_FirstBid(t *testing.T) {
 	c := setupTest(t)
@@ -130,7 +126,6 @@ func TestAuction_Bid_TooLow(t *testing.T) {
 		t.Fatalf("alice bid failed: %v", err)
 	}
 
-	// Bob bids 50 — less than Alice's 100
 	setBidder(t, "bob.testnet", 50)
 	err := c.Bid()
 	if err == nil {
@@ -140,7 +135,6 @@ func TestAuction_Bid_TooLow(t *testing.T) {
 		t.Errorf("unexpected error: %v", err)
 	}
 
-	// Highest bid should still be Alice's
 	bid := c.GetHighestBid()
 	if bid.Bidder != "alice.testnet" {
 		t.Errorf("bidder should still be alice, got %s", bid.Bidder)
@@ -155,7 +149,6 @@ func TestAuction_Bid_EqualBid(t *testing.T) {
 		t.Fatalf("alice bid failed: %v", err)
 	}
 
-	// Bob bids the same amount — not strictly higher
 	setBidder(t, "bob.testnet", 100)
 	err := c.Bid()
 	if err == nil {
@@ -178,15 +171,12 @@ func TestAuction_Bid_AfterEnd(t *testing.T) {
 	}
 }
 
-// ─── Claim ───────────────────────────────────────────────────────────────────
-
 func TestAuction_Claim_BeforeEnd(t *testing.T) {
 	c := setupTest(t)
 
 	setBidder(t, "alice.testnet", 100)
 	_ = c.Bid()
 
-	// Still before end time
 	setBlockTime(t, beforeEndNs)
 
 	err := c.Claim()
@@ -226,7 +216,6 @@ func TestAuction_Claim_AlreadyClaimed(t *testing.T) {
 	setBlockTime(t, afterEndNs)
 	_ = c.Claim()
 
-	// Second claim should fail
 	err := c.Claim()
 	if err == nil {
 		t.Fatal("expected error for double claim, got nil")
@@ -236,45 +225,36 @@ func TestAuction_Claim_AlreadyClaimed(t *testing.T) {
 	}
 }
 
-// ─── Full auction lifecycle ───────────────────────────────────────────────────
-
 func TestAuction_FullLifecycle(t *testing.T) {
 	c := setupTest(t)
 
-	// Alice bids 100
 	setBidder(t, "alice.testnet", 100)
 	if err := c.Bid(); err != nil {
 		t.Fatalf("alice bid failed: %v", err)
 	}
 
-	// Bob bids 300
 	setBidder(t, "bob.testnet", 300)
 	if err := c.Bid(); err != nil {
 		t.Fatalf("bob bid failed: %v", err)
 	}
 
-	// Alice tries to outbid Bob with 200 — should fail
 	setBidder(t, "alice.testnet", 200)
 	if err := c.Bid(); err == nil {
 		t.Fatal("alice's low bid should have failed")
 	}
 
-	// Verify Bob is still the highest bidder
 	bid := c.GetHighestBid()
 	if bid.Bidder != "bob.testnet" || bid.Amount != "300" {
 		t.Errorf("expected bob/300, got %s/%s", bid.Bidder, bid.Amount)
 	}
 
-	// Move past auction end
 	setBlockTime(t, afterEndNs)
 
-	// No more bids allowed
 	setBidder(t, "charlie.testnet", 999)
 	if err := c.Bid(); err == nil {
 		t.Fatal("bid after auction end should fail")
 	}
 
-	// Claim succeeds
 	if err := c.Claim(); err != nil {
 		t.Fatalf("claim failed: %v", err)
 	}
