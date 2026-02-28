@@ -1,0 +1,12 @@
+[package]
+name = "integration_tests"
+version = "0.1.0"
+edition = "2021"
+
+[dependencies]
+anyhow = "1.0.93"
+base64 = "0.22.1"
+near-workspaces = "0.22.0"
+serde_json = "1.0.133"
+tokio = { version = "1.41.1", features = ["full"] }
+near-gas = "0.3.0"
