@@ -4,7 +4,7 @@ go 1.25.4
 
 require (
 	github.com/emirsuyunasanov/near-auction-go/core v0.0.0
-	github.com/vlmoon99/near-sdk-go v0.0.0
+	github.com/vlmoon99/near-sdk-go v0.1.1
 )
 
 require (
@@ -12,7 +12,4 @@ require (
 	github.com/vlmoon99/jsonparser v0.0.1 // indirect
 )
 
-replace (
-	github.com/emirsuyunasanov/near-auction-go/core => ../core
-	github.com/vlmoon99/near-sdk-go => ../../near-sdk-go
-)
+replace github.com/emirsuyunasanov/near-auction-go/core => ../core
