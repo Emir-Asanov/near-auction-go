@@ -3,18 +3,14 @@ package main
 import (
 	"errors"
 
+	"github.com/emirsuyunasanov/near-auction-go/core"
 	"github.com/vlmoon99/near-sdk-go/env"
 	"github.com/vlmoon99/near-sdk-go/promise"
 	"github.com/vlmoon99/near-sdk-go/types"
 )
 
-type Bid struct {
-	Bidder string `json:"bidder"`
-	Amount string `json:"amount"`
-}
-
 type AuctionInfo struct {
-	HighestBid     Bid    `json:"highest_bid"`
+	HighestBid     core.Bid `json:"highest_bid"`
 	AuctionEndTime uint64 `json:"auction_end_time"`
 	Auctioneer     string `json:"auctioneer"`
 	Claimed        bool   `json:"claimed"`
@@ -27,7 +23,7 @@ type InitInput struct {
 
 // @contract:state
 type AuctionContract struct {
-	HighestBid     Bid    `json:"highest_bid"`
+	HighestBid     core.Bid `json:"highest_bid"`
 	AuctionEndTime uint64 `json:"auction_end_time"`
 	Auctioneer     string `json:"auctioneer"`
 	Claimed        bool   `json:"claimed"`
@@ -36,7 +32,7 @@ type AuctionContract struct {
 // @contract:init
 func (c *AuctionContract) Init(input InitInput) {
 	currentAccount, _ := env.GetCurrentAccountId()
-	c.HighestBid = Bid{
+	c.HighestBid = core.Bid{
 		Bidder: currentAccount,
 		Amount: "1",
 	}
@@ -75,7 +71,7 @@ func (c *AuctionContract) Bid() error {
 	lastBidder := c.HighestBid.Bidder
 	lastBid := currentBid
 
-	c.HighestBid = Bid{
+	c.HighestBid = core.Bid{
 		Bidder: caller,
 		Amount: deposit.String(),
 	}
@@ -109,7 +105,7 @@ func (c *AuctionContract) Claim() error {
 }
 
 // @contract:view
-func (c *AuctionContract) GetHighestBid() Bid {
+func (c *AuctionContract) GetHighestBid() core.Bid {
 	return c.HighestBid
 }
 

@@ -3,24 +3,20 @@ package main
 import (
 	"errors"
 
+	"github.com/emirsuyunasanov/near-auction-go/core"
 	"github.com/vlmoon99/near-sdk-go/env"
 	"github.com/vlmoon99/near-sdk-go/promise"
 	"github.com/vlmoon99/near-sdk-go/types"
 )
 
-type Bid struct {
-	Bidder string `json:"bidder"`
-	Amount string `json:"amount"`
-}
-
 type AuctionInfo struct {
-	HighestBid     Bid    `json:"highest_bid"`
-	AuctionEndTime uint64 `json:"auction_end_time"`
-	Auctioneer     string `json:"auctioneer"`
-	Claimed        bool   `json:"claimed"`
-	FtContract     string `json:"ft_contract"`
-	NftContract    string `json:"nft_contract"`
-	TokenId        string `json:"token_id"`
+	HighestBid     core.Bid `json:"highest_bid"`
+	AuctionEndTime uint64   `json:"auction_end_time"`
+	Auctioneer     string   `json:"auctioneer"`
+	Claimed        bool     `json:"claimed"`
+	FtContract     string   `json:"ft_contract"`
+	NftContract    string   `json:"nft_contract"`
+	TokenId        string   `json:"token_id"`
 }
 
 type InitInput struct {
@@ -40,19 +36,19 @@ type FtOnTransferInput struct {
 
 // @contract:state
 type FtAuctionContract struct {
-	HighestBid     Bid    `json:"highest_bid"`
-	AuctionEndTime uint64 `json:"auction_end_time"`
-	Auctioneer     string `json:"auctioneer"`
-	Claimed        bool   `json:"claimed"`
-	FtContract     string `json:"ft_contract"`
-	NftContract    string `json:"nft_contract"`
-	TokenId        string `json:"token_id"`
+	HighestBid     core.Bid `json:"highest_bid"`
+	AuctionEndTime uint64   `json:"auction_end_time"`
+	Auctioneer     string   `json:"auctioneer"`
+	Claimed        bool     `json:"claimed"`
+	FtContract     string   `json:"ft_contract"`
+	NftContract    string   `json:"nft_contract"`
+	TokenId        string   `json:"token_id"`
 }
 
 // @contract:init
 func (c *FtAuctionContract) Init(input InitInput) {
 	currentAccount, _ := env.GetCurrentAccountId()
-	c.HighestBid = Bid{
+	c.HighestBid = core.Bid{
 		Bidder: currentAccount,
 		Amount: input.StartingPrice,
 	}
@@ -97,7 +93,7 @@ func (c *FtAuctionContract) FtOnTransfer(input FtOnTransferInput) (string, error
 	lastBidder := c.HighestBid.Bidder
 	lastBid := currentBid
 
-	c.HighestBid = Bid{
+	c.HighestBid = core.Bid{
 		Bidder: input.SenderId,
 		Amount: input.Amount,
 	}
@@ -152,7 +148,7 @@ func (c *FtAuctionContract) Claim() error {
 }
 
 // @contract:view
-func (c *FtAuctionContract) GetHighestBid() Bid {
+func (c *FtAuctionContract) GetHighestBid() core.Bid {
 	return c.HighestBid
 }
 

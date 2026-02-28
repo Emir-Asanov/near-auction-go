@@ -3,23 +3,19 @@ package main
 import (
 	"errors"
 
+	"github.com/emirsuyunasanov/near-auction-go/core"
 	"github.com/vlmoon99/near-sdk-go/env"
 	"github.com/vlmoon99/near-sdk-go/promise"
 	"github.com/vlmoon99/near-sdk-go/types"
 )
 
-type Bid struct {
-	Bidder string `json:"bidder"`
-	Amount string `json:"amount"`
-}
-
 type AuctionInfo struct {
-	HighestBid     Bid    `json:"highest_bid"`
-	AuctionEndTime uint64 `json:"auction_end_time"`
-	Auctioneer     string `json:"auctioneer"`
-	Claimed        bool   `json:"claimed"`
-	NftContract    string `json:"nft_contract"`
-	TokenId        string `json:"token_id"`
+	HighestBid     core.Bid `json:"highest_bid"`
+	AuctionEndTime uint64   `json:"auction_end_time"`
+	Auctioneer     string   `json:"auctioneer"`
+	Claimed        bool     `json:"claimed"`
+	NftContract    string   `json:"nft_contract"`
+	TokenId        string   `json:"token_id"`
 }
 
 type InitInput struct {
@@ -31,18 +27,18 @@ type InitInput struct {
 
 // @contract:state
 type NftAuctionContract struct {
-	HighestBid     Bid    `json:"highest_bid"`
-	AuctionEndTime uint64 `json:"auction_end_time"`
-	Auctioneer     string `json:"auctioneer"`
-	Claimed        bool   `json:"claimed"`
-	NftContract    string `json:"nft_contract"`
-	TokenId        string `json:"token_id"`
+	HighestBid     core.Bid `json:"highest_bid"`
+	AuctionEndTime uint64   `json:"auction_end_time"`
+	Auctioneer     string   `json:"auctioneer"`
+	Claimed        bool     `json:"claimed"`
+	NftContract    string   `json:"nft_contract"`
+	TokenId        string   `json:"token_id"`
 }
 
 // @contract:init
 func (c *NftAuctionContract) Init(input InitInput) {
 	currentAccount, _ := env.GetCurrentAccountId()
-	c.HighestBid = Bid{
+	c.HighestBid = core.Bid{
 		Bidder: currentAccount,
 		Amount: "1",
 	}
@@ -83,7 +79,7 @@ func (c *NftAuctionContract) Bid() error {
 	lastBidder := c.HighestBid.Bidder
 	lastBid := currentBid
 
-	c.HighestBid = Bid{
+	c.HighestBid = core.Bid{
 		Bidder: caller,
 		Amount: deposit.String(),
 	}
@@ -129,7 +125,7 @@ func (c *NftAuctionContract) Claim() error {
 }
 
 // @contract:view
-func (c *NftAuctionContract) GetHighestBid() Bid {
+func (c *NftAuctionContract) GetHighestBid() core.Bid {
 	return c.HighestBid
 }
 
