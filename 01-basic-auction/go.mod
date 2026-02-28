@@ -1,4 +1,4 @@
-module github.com/emirsuyunasanov/near-auction-go
+module github.com/emirsuyunasanov/near-auction-go/01-basic-auction
 
 go 1.25.4
 
@@ -9,4 +9,4 @@ require (
 	github.com/vlmoon99/jsonparser v0.0.1 // indirect
 )
 
-replace github.com/vlmoon99/near-sdk-go => ../near-sdk-go
+replace github.com/vlmoon99/near-sdk-go => ../../near-sdk-go
