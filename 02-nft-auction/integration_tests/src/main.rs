@@ -37,12 +37,11 @@ async fn main() -> anyhow::Result<()> {
 
     let block = worker.view_block().await?;
     let now_ms = block.timestamp() / 1_000_000;
-    let future_end_ms = now_ms + 86_400_000; // 24 hours from now
+    let future_end_ms = now_ms + 86_400_000;
 
     let alice = worker.dev_create_account().await?;
     let bob = worker.dev_create_account().await?;
     let auctioneer = worker.dev_create_account().await?;
-    // Simulated NFT contract account (no real NFT logic needed for bid tests)
     let nft_contract = worker.dev_create_account().await?;
 
     // ── Test 1: Init ──────────────────────────────────────────────
@@ -59,13 +58,11 @@ async fn main() -> anyhow::Result<()> {
 
     let info = contract
         .view("get_auction_info")
+        .args_json(json!({}))
         .await?
         .json::<serde_json::Value>()?;
     assert_eq!(info["auctioneer"].as_str().unwrap(), auctioneer.id().as_str());
-    assert_eq!(
-        info["nft_contract"].as_str().unwrap(),
-        nft_contract.id().as_str()
-    );
+    assert_eq!(info["nft_contract"].as_str().unwrap(), nft_contract.id().as_str());
     assert_eq!(info["token_id"].as_str().unwrap(), "token-1");
     assert_eq!(info["claimed"].as_bool().unwrap(), false);
     println!("  OK nft_contract and token_id stored correctly");
@@ -74,6 +71,7 @@ async fn main() -> anyhow::Result<()> {
     println!("\n[2] First bid — Alice bids 2 NEAR");
     let result = alice
         .call(contract.id(), "bid")
+        .args_json(json!({}))
         .deposit(NearToken::from_near(2))
         .gas(GAS)
         .transact()
@@ -83,6 +81,7 @@ async fn main() -> anyhow::Result<()> {
 
     let bid = contract
         .view("get_highest_bid")
+        .args_json(json!({}))
         .await?
         .json::<serde_json::Value>()?;
     assert_eq!(bid["bidder"].as_str().unwrap(), alice.id().as_str());
@@ -92,6 +91,7 @@ async fn main() -> anyhow::Result<()> {
     println!("\n[3] Higher bid — Bob bids 3 NEAR");
     let result = bob
         .call(contract.id(), "bid")
+        .args_json(json!({}))
         .deposit(NearToken::from_near(3))
         .gas(GAS)
         .transact()
@@ -100,6 +100,7 @@ async fn main() -> anyhow::Result<()> {
 
     let bid = contract
         .view("get_highest_bid")
+        .args_json(json!({}))
         .await?
         .json::<serde_json::Value>()?;
     assert_eq!(bid["bidder"].as_str().unwrap(), bob.id().as_str());
@@ -109,6 +110,7 @@ async fn main() -> anyhow::Result<()> {
     println!("\n[4] Lower bid rejected — Alice bids 1 NEAR");
     let result = alice
         .call(contract.id(), "bid")
+        .args_json(json!({}))
         .deposit(NearToken::from_near(1))
         .gas(GAS)
         .transact()
@@ -120,6 +122,7 @@ async fn main() -> anyhow::Result<()> {
     println!("\n[5] Claim before auction end");
     let result = alice
         .call(contract.id(), "claim")
+        .args_json(json!({}))
         .gas(GAS)
         .transact()
         .await?;
@@ -140,6 +143,7 @@ async fn main() -> anyhow::Result<()> {
 
     let result = alice
         .call(ended.id(), "bid")
+        .args_json(json!({}))
         .deposit(NearToken::from_near(5))
         .gas(GAS)
         .transact()
@@ -148,20 +152,21 @@ async fn main() -> anyhow::Result<()> {
     println!("  OK bid after end correctly rejected");
 
     // ── Test 7: Claim after end ───────────────────────────────────
-    // Note: Claim sends NEAR to auctioneer and calls nft_transfer on the NFT
-    // contract. The nft_transfer receipt will fail (no real NFT contract), but
-    // the outer transaction (claim itself) should succeed and mark claimed=true.
     println!("\n[7] Claim after auction end");
     let result = alice
         .call(ended.id(), "claim")
+        .args_json(json!({}))
         .gas(GAS)
         .transact()
         .await?;
     println!("  logs: {:?}", result.logs());
-    // The outer tx succeeds; cross-contract nft_transfer may fail separately
     println!("  claim is_success={}", result.is_success());
 
-    let claimed = ended.view("get_claimed").await?.json::<bool>()?;
+    let claimed = ended
+        .view("get_claimed")
+        .args_json(json!({}))
+        .await?
+        .json::<bool>()?;
     assert!(claimed, "get_claimed should be true after claim");
     println!("  OK claimed=true");
 
@@ -169,6 +174,7 @@ async fn main() -> anyhow::Result<()> {
     println!("\n[8] Double claim rejected");
     let result = alice
         .call(ended.id(), "claim")
+        .args_json(json!({}))
         .gas(GAS)
         .transact()
         .await?;

@@ -41,12 +41,11 @@ async fn main() -> anyhow::Result<()> {
 
     let block = worker.view_block().await?;
     let now_ms = block.timestamp() / 1_000_000;
-    let future_end_ms = now_ms + 86_400_000; // 24 hours from now
+    let future_end_ms = now_ms + 86_400_000;
 
     let alice = worker.dev_create_account().await?;
     let bob = worker.dev_create_account().await?;
     let auctioneer = worker.dev_create_account().await?;
-    // ft_account acts as the FT contract — ft_on_transfer must be called by it
     let ft_account = worker.dev_create_account().await?;
     let nft_account = worker.dev_create_account().await?;
 
@@ -66,6 +65,7 @@ async fn main() -> anyhow::Result<()> {
 
     let info = contract
         .view("get_auction_info")
+        .args_json(json!({}))
         .await?
         .json::<serde_json::Value>()?;
     assert_eq!(info["ft_contract"].as_str().unwrap(), ft_account.id().as_str());
@@ -74,9 +74,7 @@ async fn main() -> anyhow::Result<()> {
     assert_eq!(info["highest_bid"]["amount"].as_str().unwrap(), "1000");
     println!("  OK ft/nft contracts and starting_price stored");
 
-    // ── Test 2: FT bid — alice bids 2000 tokens via ft_on_transfer ─
-    // ft_on_transfer is called BY the FT contract (ft_account), with
-    // sender_id = alice (the actual bidder).
+    // ── Test 2: FT bid — Alice bids 2000 tokens ──────────────────
     println!("\n[2] FT bid — Alice sends 2000 tokens (called by ft_account)");
     let result = ft_account
         .call(contract.id(), "ft_on_transfer")
@@ -90,12 +88,11 @@ async fn main() -> anyhow::Result<()> {
         .transact()
         .await?;
     println!("  logs: {:?}", result.logs());
-    // The cross-contract ft_transfer (refund to previous bidder) may fail
-    // because there is no real FT contract, but the state update happens first.
     println!("  ft_on_transfer is_success={}", result.is_success());
 
     let bid = contract
         .view("get_highest_bid")
+        .args_json(json!({}))
         .await?
         .json::<serde_json::Value>()?;
     assert_eq!(bid["bidder"].as_str().unwrap(), alice.id().as_str());
@@ -119,6 +116,7 @@ async fn main() -> anyhow::Result<()> {
 
     let bid = contract
         .view("get_highest_bid")
+        .args_json(json!({}))
         .await?
         .json::<serde_json::Value>()?;
     assert_eq!(bid["bidder"].as_str().unwrap(), bob.id().as_str());
@@ -161,13 +159,14 @@ async fn main() -> anyhow::Result<()> {
     println!("\n[6] Claim before auction end");
     let result = alice
         .call(contract.id(), "claim")
+        .args_json(json!({}))
         .gas(GAS)
         .transact()
         .await?;
     assert!(!result.is_success(), "Early claim should fail");
     println!("  OK early claim correctly rejected");
 
-    // ── Test 7: Bid on ended auction rejected ─────────────────────
+    // ── Test 7: FT bid on ended auction rejected ──────────────────
     println!("\n[7] FT bid after auction end — end_time=1");
     let ended = deploy_and_init(
         &worker,
@@ -199,13 +198,18 @@ async fn main() -> anyhow::Result<()> {
     println!("\n[8] Claim after auction end");
     let result = alice
         .call(ended.id(), "claim")
+        .args_json(json!({}))
         .gas(GAS)
         .transact()
         .await?;
     println!("  logs: {:?}", result.logs());
     println!("  claim is_success={}", result.is_success());
 
-    let claimed = ended.view("get_claimed").await?.json::<bool>()?;
+    let claimed = ended
+        .view("get_claimed")
+        .args_json(json!({}))
+        .await?
+        .json::<bool>()?;
     assert!(claimed, "get_claimed should be true after claim");
     println!("  OK claimed=true");
 
@@ -213,6 +217,7 @@ async fn main() -> anyhow::Result<()> {
     println!("\n[9] Double claim rejected");
     let result = alice
         .call(ended.id(), "claim")
+        .args_json(json!({}))
         .gas(GAS)
         .transact()
         .await?;

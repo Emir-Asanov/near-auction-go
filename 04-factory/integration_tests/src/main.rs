@@ -3,7 +3,6 @@ use near_gas::NearGas;
 use near_workspaces::types::NearToken;
 use serde_json::json;
 
-// Factory WASM has auction.wasm embedded — build factory first.
 const WASM_PATH: &str = "../main.wasm";
 const GAS: NearGas = NearGas::from_tgas(300);
 
@@ -14,6 +13,7 @@ async fn deploy_factory(
     let contract = worker.dev_deploy(wasm).await?;
     let result = contract
         .call("init")
+        .args_json(json!({}))
         .gas(GAS)
         .transact()
         .await?;
@@ -40,13 +40,16 @@ async fn main() -> anyhow::Result<()> {
     println!("\n[1] Factory init");
     let factory = deploy_factory(&worker, &wasm).await?;
 
-    let code_size = factory.view("get_code_size").await?.json::<i64>()?;
+    let code_size = factory
+        .view("get_code_size")
+        .args_json(json!({}))
+        .await?
+        .json::<i64>()?;
     assert!(code_size > 0, "embedded auction.wasm should not be empty");
     println!("  OK code_size={code_size}");
 
     // ── Test 2: UpdateAuctionContract — unauthorized ───────────────
     println!("\n[2] UpdateAuctionContract — unauthorized caller");
-    // minimal valid-looking WASM header
     let fake_wasm: Vec<u8> = b"\x00asm\x01\x00\x00\x00".to_vec();
     let encoded = base64::engine::general_purpose::STANDARD.encode(&fake_wasm);
 
@@ -56,15 +59,10 @@ async fn main() -> anyhow::Result<()> {
         .gas(GAS)
         .transact()
         .await?;
-    assert!(
-        !result.is_success(),
-        "Unauthorized update should be rejected"
-    );
+    assert!(!result.is_success(), "Unauthorized update should be rejected");
     println!("  OK unauthorized update correctly rejected");
 
-    // ── Test 3: UpdateAuctionContract — by the contract itself ────
-    // The contract only allows calls where predecessor == current account.
-    // In near-workspaces we can call as the contract account directly.
+    // ── Test 3: UpdateAuctionContract — authorized ────────────────
     println!("\n[3] UpdateAuctionContract — authorized (contract calls itself)");
     let result = factory
         .as_account()
@@ -76,7 +74,11 @@ async fn main() -> anyhow::Result<()> {
     println!("  logs: {:?}", result.logs());
     assert!(result.is_success(), "Authorized update failed: {:?}", result);
 
-    let new_size = factory.view("get_code_size").await?.json::<i64>()?;
+    let new_size = factory
+        .view("get_code_size")
+        .args_json(json!({}))
+        .await?
+        .json::<i64>()?;
     assert_eq!(new_size, fake_wasm.len() as i64);
     println!("  OK code_size updated to {new_size}");
 
@@ -100,10 +102,7 @@ async fn main() -> anyhow::Result<()> {
         .gas(GAS)
         .transact()
         .await?;
-    assert!(
-        !result.is_success(),
-        "Insufficient deposit should be rejected"
-    );
+    assert!(!result.is_success(), "Insufficient deposit should be rejected");
     println!("  OK insufficient deposit correctly rejected");
 
     // ── Test 5: DeployNewAuction — success ────────────────────────
@@ -125,12 +124,7 @@ async fn main() -> anyhow::Result<()> {
         .await?;
     println!("  logs: {:?}", result.logs());
     println!("  deploy is_success={}", result.is_success());
-    // Cross-contract deploy + init + callback all need to succeed
-    assert!(
-        result.is_success(),
-        "DeployNewAuction failed: {:?}",
-        result
-    );
+    assert!(result.is_success(), "DeployNewAuction failed: {:?}", result);
     println!("  OK auction subaccount deployed");
 
     // ── Test 6: DeployNewAuction — invalid name (too long) ────────
@@ -151,10 +145,7 @@ async fn main() -> anyhow::Result<()> {
         .gas(GAS)
         .transact()
         .await?;
-    assert!(
-        !result.is_success(),
-        "Long name should be rejected"
-    );
+    assert!(!result.is_success(), "Long name should be rejected");
     println!("  OK long name correctly rejected");
 
     println!("\n✓ All 04-factory integration tests passed");

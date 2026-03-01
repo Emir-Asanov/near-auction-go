@@ -46,6 +46,7 @@ async fn main() -> anyhow::Result<()> {
 
     let info = contract
         .view("get_auction_info")
+        .args_json(json!({}))
         .await?
         .json::<serde_json::Value>()?;
     assert_eq!(info["auctioneer"].as_str().unwrap(), auctioneer.id().as_str());
@@ -57,6 +58,7 @@ async fn main() -> anyhow::Result<()> {
     println!("\n[2] First bid — Alice bids 2 NEAR");
     let result = alice
         .call(contract.id(), "bid")
+        .args_json(json!({}))
         .deposit(NearToken::from_near(2))
         .gas(GAS)
         .transact()
@@ -66,6 +68,7 @@ async fn main() -> anyhow::Result<()> {
 
     let bid = contract
         .view("get_highest_bid")
+        .args_json(json!({}))
         .await?
         .json::<serde_json::Value>()?;
     assert_eq!(bid["bidder"].as_str().unwrap(), alice.id().as_str());
@@ -75,6 +78,7 @@ async fn main() -> anyhow::Result<()> {
     println!("\n[3] Higher bid — Bob bids 3 NEAR");
     let result = bob
         .call(contract.id(), "bid")
+        .args_json(json!({}))
         .deposit(NearToken::from_near(3))
         .gas(GAS)
         .transact()
@@ -83,6 +87,7 @@ async fn main() -> anyhow::Result<()> {
 
     let bid = contract
         .view("get_highest_bid")
+        .args_json(json!({}))
         .await?
         .json::<serde_json::Value>()?;
     assert_eq!(bid["bidder"].as_str().unwrap(), bob.id().as_str());
@@ -92,6 +97,7 @@ async fn main() -> anyhow::Result<()> {
     println!("\n[4] Lower bid rejected — Alice bids 1 NEAR");
     let result = alice
         .call(contract.id(), "bid")
+        .args_json(json!({}))
         .deposit(NearToken::from_near(1))
         .gas(GAS)
         .transact()
@@ -103,6 +109,7 @@ async fn main() -> anyhow::Result<()> {
     println!("\n[5] Claim before auction end");
     let result = alice
         .call(contract.id(), "claim")
+        .args_json(json!({}))
         .gas(GAS)
         .transact()
         .await?;
@@ -114,6 +121,7 @@ async fn main() -> anyhow::Result<()> {
     let ended = deploy_and_init(&worker, &wasm, 1, auctioneer.id().as_str()).await?;
     let result = alice
         .call(ended.id(), "bid")
+        .args_json(json!({}))
         .deposit(NearToken::from_near(5))
         .gas(GAS)
         .transact()
@@ -125,13 +133,18 @@ async fn main() -> anyhow::Result<()> {
     println!("\n[7] Claim after auction end");
     let result = alice
         .call(ended.id(), "claim")
+        .args_json(json!({}))
         .gas(GAS)
         .transact()
         .await?;
     println!("  logs: {:?}", result.logs());
     assert!(result.is_success(), "Claim failed: {:?}", result);
 
-    let claimed = ended.view("get_claimed").await?.json::<bool>()?;
+    let claimed = ended
+        .view("get_claimed")
+        .args_json(json!({}))
+        .await?
+        .json::<bool>()?;
     assert!(claimed, "get_claimed should be true");
     println!("  OK claimed=true");
 
@@ -139,6 +152,7 @@ async fn main() -> anyhow::Result<()> {
     println!("\n[8] Double claim rejected");
     let result = alice
         .call(ended.id(), "claim")
+        .args_json(json!({}))
         .gas(GAS)
         .transact()
         .await?;
@@ -149,12 +163,14 @@ async fn main() -> anyhow::Result<()> {
     println!("\n[9] View functions");
     let end_time = contract
         .view("get_auction_end_time")
+        .args_json(json!({}))
         .await?
         .json::<u64>()?;
     assert_eq!(end_time, future_end_ms);
 
     let auctioneer_id = contract
         .view("get_auctioneer")
+        .args_json(json!({}))
         .await?
         .json::<String>()?;
     assert_eq!(auctioneer_id, auctioneer.id().as_str());
