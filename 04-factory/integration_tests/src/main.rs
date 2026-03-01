@@ -40,11 +40,14 @@ async fn main() -> anyhow::Result<()> {
     println!("\n[1] Factory init");
     let factory = deploy_factory(&worker, &wasm).await?;
 
-    let code_size = factory
-        .view("get_code_size")
+    let result = factory
+        .call("get_code_size")
         .args_json(json!({}))
-        .await?
-        .json::<i64>()?;
+        .gas(GAS)
+        .transact()
+        .await?;
+    assert!(result.is_success(), "get_code_size failed: {:?}", result);
+    let code_size: i64 = result.json()?;
     assert!(code_size > 0, "embedded auction.wasm should not be empty");
     println!("  OK code_size={code_size}");
 
@@ -74,11 +77,8 @@ async fn main() -> anyhow::Result<()> {
     println!("  logs: {:?}", result.logs());
     assert!(result.is_success(), "Authorized update failed: {:?}", result);
 
-    let new_size = factory
-        .view("get_code_size")
-        .args_json(json!({}))
-        .await?
-        .json::<i64>()?;
+    let result = factory.call("get_code_size").args_json(json!({})).gas(GAS).transact().await?;
+    let new_size: i64 = result.json()?;
     assert_eq!(new_size, fake_wasm.len() as i64);
     println!("  OK code_size updated to {new_size}");
 

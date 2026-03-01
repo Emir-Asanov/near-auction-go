@@ -44,15 +44,19 @@ async fn main() -> anyhow::Result<()> {
     let contract =
         deploy_and_init(&worker, &wasm, future_end_ms, auctioneer.id().as_str()).await?;
 
-    let info = contract
-        .view("get_auction_info")
+    let result = contract
+        .call("get_auction_info")
         .args_json(json!({}))
-        .await?
-        .json::<serde_json::Value>()?;
+        .gas(GAS)
+        .transact()
+        .await?;
+    assert!(result.is_success(), "get_auction_info failed: {:?}", result);
+    let info: serde_json::Value = result.json()?;
+    println!("  auction_info: {}", info);
     assert_eq!(info["auctioneer"].as_str().unwrap(), auctioneer.id().as_str());
     assert_eq!(info["claimed"].as_bool().unwrap(), false);
     assert_eq!(info["auction_end_time"].as_u64().unwrap(), future_end_ms);
-    println!("  OK auction_end_time={future_end_ms}, claimed=false");
+    println!("  OK init: auction_end_time={future_end_ms}, claimed=false");
 
     // ── Test 2: First bid ─────────────────────────────────────────
     println!("\n[2] First bid — Alice bids 2 NEAR");
@@ -66,11 +70,14 @@ async fn main() -> anyhow::Result<()> {
     println!("  logs: {:?}", result.logs());
     assert!(result.is_success(), "Alice bid failed: {:?}", result);
 
-    let bid = contract
-        .view("get_highest_bid")
+    let result = contract
+        .call("get_highest_bid")
         .args_json(json!({}))
-        .await?
-        .json::<serde_json::Value>()?;
+        .gas(GAS)
+        .transact()
+        .await?;
+    assert!(result.is_success());
+    let bid: serde_json::Value = result.json()?;
     assert_eq!(bid["bidder"].as_str().unwrap(), alice.id().as_str());
     println!("  OK Alice is highest bidder");
 
@@ -85,11 +92,13 @@ async fn main() -> anyhow::Result<()> {
         .await?;
     assert!(result.is_success(), "Bob bid failed: {:?}", result);
 
-    let bid = contract
-        .view("get_highest_bid")
+    let result = contract
+        .call("get_highest_bid")
         .args_json(json!({}))
-        .await?
-        .json::<serde_json::Value>()?;
+        .gas(GAS)
+        .transact()
+        .await?;
+    let bid: serde_json::Value = result.json()?;
     assert_eq!(bid["bidder"].as_str().unwrap(), bob.id().as_str());
     println!("  OK Bob outbid Alice");
 
@@ -140,11 +149,13 @@ async fn main() -> anyhow::Result<()> {
     println!("  logs: {:?}", result.logs());
     assert!(result.is_success(), "Claim failed: {:?}", result);
 
-    let claimed = ended
-        .view("get_claimed")
+    let result = ended
+        .call("get_claimed")
         .args_json(json!({}))
-        .await?
-        .json::<bool>()?;
+        .gas(GAS)
+        .transact()
+        .await?;
+    let claimed: bool = result.json()?;
     assert!(claimed, "get_claimed should be true");
     println!("  OK claimed=true");
 
@@ -161,18 +172,22 @@ async fn main() -> anyhow::Result<()> {
 
     // ── Test 9: View functions ────────────────────────────────────
     println!("\n[9] View functions");
-    let end_time = contract
-        .view("get_auction_end_time")
+    let result = contract
+        .call("get_auction_end_time")
         .args_json(json!({}))
-        .await?
-        .json::<u64>()?;
+        .gas(GAS)
+        .transact()
+        .await?;
+    let end_time: u64 = result.json()?;
     assert_eq!(end_time, future_end_ms);
 
-    let auctioneer_id = contract
-        .view("get_auctioneer")
+    let result = contract
+        .call("get_auctioneer")
         .args_json(json!({}))
-        .await?
-        .json::<String>()?;
+        .gas(GAS)
+        .transact()
+        .await?;
+    let auctioneer_id: String = result.json()?;
     assert_eq!(auctioneer_id, auctioneer.id().as_str());
     println!("  OK get_auction_end_time and get_auctioneer");
 

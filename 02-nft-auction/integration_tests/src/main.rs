@@ -47,20 +47,21 @@ async fn main() -> anyhow::Result<()> {
     // ── Test 1: Init ──────────────────────────────────────────────
     println!("\n[1] Init with nft_contract and token_id");
     let contract = deploy_and_init(
-        &worker,
-        &wasm,
-        future_end_ms,
+        &worker, &wasm, future_end_ms,
         auctioneer.id().as_str(),
         nft_contract.id().as_str(),
         "token-1",
-    )
-    .await?;
+    ).await?;
 
-    let info = contract
-        .view("get_auction_info")
+    let result = contract
+        .call("get_auction_info")
         .args_json(json!({}))
-        .await?
-        .json::<serde_json::Value>()?;
+        .gas(GAS)
+        .transact()
+        .await?;
+    assert!(result.is_success(), "get_auction_info failed: {:?}", result);
+    let info: serde_json::Value = result.json()?;
+    println!("  auction_info: {}", info);
     assert_eq!(info["auctioneer"].as_str().unwrap(), auctioneer.id().as_str());
     assert_eq!(info["nft_contract"].as_str().unwrap(), nft_contract.id().as_str());
     assert_eq!(info["token_id"].as_str().unwrap(), "token-1");
@@ -79,11 +80,8 @@ async fn main() -> anyhow::Result<()> {
     println!("  logs: {:?}", result.logs());
     assert!(result.is_success(), "Alice bid failed: {:?}", result);
 
-    let bid = contract
-        .view("get_highest_bid")
-        .args_json(json!({}))
-        .await?
-        .json::<serde_json::Value>()?;
+    let result = contract.call("get_highest_bid").args_json(json!({})).gas(GAS).transact().await?;
+    let bid: serde_json::Value = result.json()?;
     assert_eq!(bid["bidder"].as_str().unwrap(), alice.id().as_str());
     println!("  OK Alice is highest bidder");
 
@@ -98,11 +96,8 @@ async fn main() -> anyhow::Result<()> {
         .await?;
     assert!(result.is_success(), "Bob bid failed: {:?}", result);
 
-    let bid = contract
-        .view("get_highest_bid")
-        .args_json(json!({}))
-        .await?
-        .json::<serde_json::Value>()?;
+    let result = contract.call("get_highest_bid").args_json(json!({})).gas(GAS).transact().await?;
+    let bid: serde_json::Value = result.json()?;
     assert_eq!(bid["bidder"].as_str().unwrap(), bob.id().as_str());
     println!("  OK Bob outbid Alice");
 
@@ -132,14 +127,11 @@ async fn main() -> anyhow::Result<()> {
     // ── Test 6: Bid after end rejected ───────────────────────────
     println!("\n[6] Bid after auction end — end_time=1");
     let ended = deploy_and_init(
-        &worker,
-        &wasm,
-        1,
+        &worker, &wasm, 1,
         auctioneer.id().as_str(),
         nft_contract.id().as_str(),
         "token-1",
-    )
-    .await?;
+    ).await?;
 
     let result = alice
         .call(ended.id(), "bid")
@@ -162,11 +154,8 @@ async fn main() -> anyhow::Result<()> {
     println!("  logs: {:?}", result.logs());
     println!("  claim is_success={}", result.is_success());
 
-    let claimed = ended
-        .view("get_claimed")
-        .args_json(json!({}))
-        .await?
-        .json::<bool>()?;
+    let result = ended.call("get_claimed").args_json(json!({})).gas(GAS).transact().await?;
+    let claimed: bool = result.json()?;
     assert!(claimed, "get_claimed should be true after claim");
     println!("  OK claimed=true");
 

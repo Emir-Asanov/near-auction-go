@@ -52,22 +52,17 @@ async fn main() -> anyhow::Result<()> {
     // ── Test 1: Init ──────────────────────────────────────────────
     println!("\n[1] Init with ft_contract, nft_contract, starting_price");
     let contract = deploy_and_init(
-        &worker,
-        &wasm,
-        future_end_ms,
+        &worker, &wasm, future_end_ms,
         auctioneer.id().as_str(),
         ft_account.id().as_str(),
         nft_account.id().as_str(),
-        "token-1",
-        "1000",
-    )
-    .await?;
+        "token-1", "1000",
+    ).await?;
 
-    let info = contract
-        .view("get_auction_info")
-        .args_json(json!({}))
-        .await?
-        .json::<serde_json::Value>()?;
+    let result = contract.call("get_auction_info").args_json(json!({})).gas(GAS).transact().await?;
+    assert!(result.is_success(), "get_auction_info failed: {:?}", result);
+    let info: serde_json::Value = result.json()?;
+    println!("  auction_info: {}", info);
     assert_eq!(info["ft_contract"].as_str().unwrap(), ft_account.id().as_str());
     assert_eq!(info["nft_contract"].as_str().unwrap(), nft_account.id().as_str());
     assert_eq!(info["token_id"].as_str().unwrap(), "token-1");
@@ -78,11 +73,7 @@ async fn main() -> anyhow::Result<()> {
     println!("\n[2] FT bid — Alice sends 2000 tokens (called by ft_account)");
     let result = ft_account
         .call(contract.id(), "ft_on_transfer")
-        .args_json(json!({
-            "sender_id": alice.id(),
-            "amount": "2000",
-            "msg": ""
-        }))
+        .args_json(json!({ "sender_id": alice.id(), "amount": "2000", "msg": "" }))
         .deposit(NearToken::from_yoctonear(1))
         .gas(GAS)
         .transact()
@@ -90,11 +81,8 @@ async fn main() -> anyhow::Result<()> {
     println!("  logs: {:?}", result.logs());
     println!("  ft_on_transfer is_success={}", result.is_success());
 
-    let bid = contract
-        .view("get_highest_bid")
-        .args_json(json!({}))
-        .await?
-        .json::<serde_json::Value>()?;
+    let result = contract.call("get_highest_bid").args_json(json!({})).gas(GAS).transact().await?;
+    let bid: serde_json::Value = result.json()?;
     assert_eq!(bid["bidder"].as_str().unwrap(), alice.id().as_str());
     assert_eq!(bid["amount"].as_str().unwrap(), "2000");
     println!("  OK Alice is highest bidder at 2000 tokens");
@@ -103,22 +91,15 @@ async fn main() -> anyhow::Result<()> {
     println!("\n[3] Higher FT bid — Bob sends 3000 tokens");
     let result = ft_account
         .call(contract.id(), "ft_on_transfer")
-        .args_json(json!({
-            "sender_id": bob.id(),
-            "amount": "3000",
-            "msg": ""
-        }))
+        .args_json(json!({ "sender_id": bob.id(), "amount": "3000", "msg": "" }))
         .deposit(NearToken::from_yoctonear(1))
         .gas(GAS)
         .transact()
         .await?;
     println!("  is_success={}", result.is_success());
 
-    let bid = contract
-        .view("get_highest_bid")
-        .args_json(json!({}))
-        .await?
-        .json::<serde_json::Value>()?;
+    let result = contract.call("get_highest_bid").args_json(json!({})).gas(GAS).transact().await?;
+    let bid: serde_json::Value = result.json()?;
     assert_eq!(bid["bidder"].as_str().unwrap(), bob.id().as_str());
     assert_eq!(bid["amount"].as_str().unwrap(), "3000");
     println!("  OK Bob outbid Alice");
@@ -127,11 +108,7 @@ async fn main() -> anyhow::Result<()> {
     println!("\n[4] Lower FT bid rejected — Alice sends 500 tokens");
     let result = ft_account
         .call(contract.id(), "ft_on_transfer")
-        .args_json(json!({
-            "sender_id": alice.id(),
-            "amount": "500",
-            "msg": ""
-        }))
+        .args_json(json!({ "sender_id": alice.id(), "amount": "500", "msg": "" }))
         .deposit(NearToken::from_yoctonear(1))
         .gas(GAS)
         .transact()
@@ -143,11 +120,7 @@ async fn main() -> anyhow::Result<()> {
     println!("\n[5] Wrong FT contract rejected — called by alice (not ft_account)");
     let result = alice
         .call(contract.id(), "ft_on_transfer")
-        .args_json(json!({
-            "sender_id": alice.id(),
-            "amount": "9999",
-            "msg": ""
-        }))
+        .args_json(json!({ "sender_id": alice.id(), "amount": "9999", "msg": "" }))
         .deposit(NearToken::from_yoctonear(1))
         .gas(GAS)
         .transact()
@@ -169,24 +142,16 @@ async fn main() -> anyhow::Result<()> {
     // ── Test 7: FT bid on ended auction rejected ──────────────────
     println!("\n[7] FT bid after auction end — end_time=1");
     let ended = deploy_and_init(
-        &worker,
-        &wasm,
-        1,
+        &worker, &wasm, 1,
         auctioneer.id().as_str(),
         ft_account.id().as_str(),
         nft_account.id().as_str(),
-        "token-1",
-        "1000",
-    )
-    .await?;
+        "token-1", "1000",
+    ).await?;
 
     let result = ft_account
         .call(ended.id(), "ft_on_transfer")
-        .args_json(json!({
-            "sender_id": alice.id(),
-            "amount": "5000",
-            "msg": ""
-        }))
+        .args_json(json!({ "sender_id": alice.id(), "amount": "5000", "msg": "" }))
         .deposit(NearToken::from_yoctonear(1))
         .gas(GAS)
         .transact()
@@ -205,11 +170,8 @@ async fn main() -> anyhow::Result<()> {
     println!("  logs: {:?}", result.logs());
     println!("  claim is_success={}", result.is_success());
 
-    let claimed = ended
-        .view("get_claimed")
-        .args_json(json!({}))
-        .await?
-        .json::<bool>()?;
+    let result = ended.call("get_claimed").args_json(json!({})).gas(GAS).transact().await?;
+    let claimed: bool = result.json()?;
     assert!(claimed, "get_claimed should be true after claim");
     println!("  OK claimed=true");
 
